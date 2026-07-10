@@ -731,7 +731,7 @@ app.get('/api/reports/download', authenticateRole('owner'), async (req, res) => 
     const doctorsRes = await db.query(`
       SELECT name as "Doctor Name", email as "Email", phone as "Phone", 
              specialization as "Specialization", fee as "Consultation Fee", 
-             CASE WHEN is_active = true OR is_active = 1 THEN 'Active' ELSE 'Disabled' END as "Status",
+             is_active,
              created_at as "Created At"
       FROM doctors
       ORDER BY name ASC
@@ -743,7 +743,16 @@ app.get('/api/reports/download', authenticateRole('owner'), async (req, res) => 
     const wsAppointments = xlsx.utils.json_to_sheet(appointmentsRes.rows);
     xlsx.utils.book_append_sheet(wb, wsAppointments, 'Appointments');
 
-    const wsDoctors = xlsx.utils.json_to_sheet(doctorsRes.rows);
+    // Format doctor active status in JavaScript to be database agnostic
+    const formattedDoctors = doctorsRes.rows.map(doc => {
+      const { is_active, ...rest } = doc;
+      return {
+        ...rest,
+        "Status": (is_active === true || is_active === 1 || is_active === '1' || is_active === 'true') ? 'Active' : 'Disabled'
+      };
+    });
+
+    const wsDoctors = xlsx.utils.json_to_sheet(formattedDoctors);
     xlsx.utils.book_append_sheet(wb, wsDoctors, 'Doctors');
 
     // Write to a buffer and serve
