@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Doctor Portal - Consultations Management</title>
   <link rel="stylesheet" href="/css/styles.css">
+  
+  <!-- PWA Settings -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MediConsult">
+  <link class="apple-touch-icon" rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="theme-color" content="#0d9488">
 </head>
 <body>
 
@@ -243,5 +251,21 @@
       }
     }
   </script>
+
+  <!-- Mobile Bottom Navigation Bar (Visible only on mobile viewports) -->
+  <div class="mobile-nav-bar">
+    <a href="/index.html" class="mobile-nav-link" id="mob-nav-patient">
+      <span class="mobile-nav-icon">👤</span>
+      <span class="mobile-nav-label">Patient</span>
+    </a>
+    <a href="/doctor.html" class="mobile-nav-link active" id="mob-nav-doctor">
+      <span class="mobile-nav-icon">🩺</span>
+      <span class="mobile-nav-label">Doctor</span>
+    </a>
+    <a href="/owner.html" class="mobile-nav-link" id="mob-nav-owner">
+      <span class="mobile-nav-icon">⚙️</span>
+      <span class="mobile-nav-label">Admin</span>
+    </a>
+  </div>
 </body>
 </html>

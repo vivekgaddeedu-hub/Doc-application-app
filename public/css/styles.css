@@ -644,24 +644,163 @@ tr:hover td {
   100% { transform: rotate(360deg); }
 }
 
-/* --- RESPONSIVENESS --- */
-@media (max-width: 600px) {
-  .container {
-    padding: 1rem 1rem;
+/* --- RESPONSIVENESS & MOBILE APP LAYOUT --- */
+
+/* --- MOBILE BOTTOM NAVIGATION --- */
+.mobile-nav-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 68px;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  z-index: 999;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 1rem;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-nav-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  width: 70px;
+  height: 100%;
+  gap: 3px;
+  transition: var(--transition);
+}
+
+.mobile-nav-icon {
+  font-size: 1.4rem;
+}
+
+.mobile-nav-link.active {
+  color: var(--primary);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 80px; /* Leave space for bottom navigation bar */
   }
+
   header {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
+    display: none !important; /* Hide desktop header for app-like presentation */
   }
-  .nav-links {
-    width: 100%;
-    justify-content: space-around;
+
+  .mobile-nav-bar {
+    display: flex; /* Show bottom navigation bar */
   }
+
+  .container {
+    padding: 1.5rem 1rem;
+  }
+
   .glass-panel {
     padding: 1.5rem;
+    border-radius: var(--radius-md);
   }
+
   .stat-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  /* Responsive Tables as Mobile-Friendly Cards */
+  .table-container {
+    background: transparent;
+    border: none;
+    margin-top: 0.5rem;
+  }
+
+  table, thead, tbody, th, td, tr {
+    display: block;
+    width: 100%;
+  }
+
+  thead {
+    display: none; /* Hide tabular header column labels */
+  }
+
+  tr {
+    background: rgba(30, 41, 59, 0.65);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+
+  td {
+    padding: 0.65rem 0;
+    border-bottom: 1px dashed var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    text-align: right;
+  }
+
+  td:last-child {
+    border-bottom: none;
+    padding-top: 1rem;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  /* Dynamic CSS Labels matching individual tables in App */
+  /* Doctors Directory */
+  #owner-doctors-list td:nth-of-type(1)::before { content: 'Doctor Name'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-doctors-list td:nth-of-type(2)::before { content: 'Email'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-doctors-list td:nth-of-type(3)::before { content: 'Phone'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-doctors-list td:nth-of-type(4)::before { content: 'Specialization'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-doctors-list td:nth-of-type(5)::before { content: 'Fee'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-doctors-list td:nth-of-type(6)::before { content: 'Access Status'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-doctors-list td:nth-of-type(7)::before { content: 'Actions'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+
+  /* Doctor Bookings Log */
+  #doctor-appointments-list td:nth-of-type(1)::before { content: 'Appointment ID'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #doctor-appointments-list td:nth-of-type(2)::before { content: 'Patient Details'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #doctor-appointments-list td:nth-of-type(3)::before { content: 'Health Issue'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #doctor-appointments-list td:nth-of-type(4)::before { content: 'Payment Info'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #doctor-appointments-list td:nth-of-type(5)::before { content: 'Status'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #doctor-appointments-list td:nth-of-type(6)::before { content: 'Scheduled Date/Time'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #doctor-appointments-list td:nth-of-type(7)::before { content: 'Actions'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+
+  /* Doctor Availability Records */
+  #availability-list td:nth-of-type(1)::before { content: 'Date'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #availability-list td:nth-of-type(2)::before { content: 'Working Hours'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #availability-list td:nth-of-type(3)::before { content: 'Status'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #availability-list td:nth-of-type(4)::before { content: 'Action'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+
+  /* Owner Recent Bookings */
+  #owner-recent-appointments td:nth-of-type(1)::before { content: 'Appointment ID'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-recent-appointments td:nth-of-type(2)::before { content: 'Patient Name'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-recent-appointments td:nth-of-type(3)::before { content: 'Doctor Name'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-recent-appointments td:nth-of-type(4)::before { content: 'Fee'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-recent-appointments td:nth-of-type(5)::before { content: 'Status'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-recent-appointments td:nth-of-type(6)::before { content: 'Meeting Slot'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-recent-appointments td:nth-of-type(7)::before { content: 'Created At'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+
+  /* Owner Dispatch Log */
+  #owner-notifications-log td:nth-of-type(1)::before { content: 'Type'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-notifications-log td:nth-of-type(2)::before { content: 'Recipient'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-notifications-log td:nth-of-type(3)::before { content: 'Details'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-notifications-log td:nth-of-type(4)::before { content: 'Status'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+  #owner-notifications-log td:nth-of-type(5)::before { content: 'Dispatched At'; font-weight: 700; color: var(--text-secondary); text-align: left; }
+}
+
+@media (max-width: 480px) {
+  .stat-grid {
+    grid-template-columns: 1fr; /* Single column stats on extremely small devices */
   }
 }
