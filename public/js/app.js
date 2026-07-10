@@ -159,8 +159,32 @@ async function initPatientPortal() {
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
       const apptIdText = document.getElementById('success-appt-id').textContent.trim();
+      
+      const copyToClipboard = async (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        } else {
+          // Fallback for non-secure HTTP / mobile contexts
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          try {
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            if (!successful) throw new Error('Copy command failed');
+          } catch (err) {
+            document.body.removeChild(textArea);
+            throw err;
+          }
+        }
+      };
+
       try {
-        await navigator.clipboard.writeText(apptIdText);
+        await copyToClipboard(apptIdText);
         const originalHtml = copyBtn.innerHTML;
         copyBtn.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#10b981" viewBox="0 0 24 24" style="flex-shrink: 0;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -172,6 +196,7 @@ async function initPatientPortal() {
           copyBtn.style.borderColor = '';
         }, 2000);
       } catch (err) {
+        console.error('Clipboard copy failed:', err);
         showToast('Failed to copy ID', 'error');
       }
     });
