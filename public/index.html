@@ -131,11 +131,17 @@
       <button class="modal-close">&times;</button>
       <div style="font-size: 3rem; color: var(--success); margin-bottom: 1rem;">🎉</div>
       <h2 class="mb-1">Request Submitted Successfully!</h2>
-      <p class="text-secondary-color mb-2">Your consultation request is now under review by the doctor. Please save your Appointment ID to track updates or OTP verifications.</p>
-      <div style="background: rgba(15,23,42,0.8); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 1.25rem; font-weight: 700; color: var(--primary); font-family: monospace;" id="success-appt-id">
-        APT-00000000-000000
+      <p class="text-secondary-color mb-2">Your consultation request is now under review by the doctor. Please save your Appointment ID to track updates.</p>
+      <div style="display: flex; flex-direction: column; gap: 0.5rem; max-width: 320px; margin: 0 auto 1.5rem auto;">
+        <div style="background: rgba(15,23,42,0.8); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 1.25rem; font-weight: 700; color: var(--primary); font-family: monospace;" id="success-appt-id">
+          APT-00000000-000000
+        </div>
+        <button id="copy-appt-id-btn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem; font-size: 0.875rem; cursor: pointer; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          <span>Copy Appointment ID</span>
+        </button>
       </div>
-      <button class="btn btn-secondary mt-3 btn-close-modal">Done</button>
+      <button class="btn btn-secondary btn-close-modal">Done</button>
     </div>
   </div>
 

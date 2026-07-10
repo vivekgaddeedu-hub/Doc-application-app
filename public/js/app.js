@@ -154,6 +154,29 @@ async function initPatientPortal() {
   const otpForm = document.getElementById('otp-form');
   const statusDetailsSection = document.getElementById('status-details-section');
 
+  // Copy Appointment ID button event listener
+  const copyBtn = document.getElementById('copy-appt-id-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const apptIdText = document.getElementById('success-appt-id').textContent.trim();
+      try {
+        await navigator.clipboard.writeText(apptIdText);
+        const originalHtml = copyBtn.innerHTML;
+        copyBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#10b981" viewBox="0 0 24 24" style="flex-shrink: 0;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          <span style="color: #10b981; font-weight: 600;">Copied!</span>
+        `;
+        copyBtn.style.borderColor = '#10b981';
+        setTimeout(() => {
+          copyBtn.innerHTML = originalHtml;
+          copyBtn.style.borderColor = '';
+        }, 2000);
+      } catch (err) {
+        showToast('Failed to copy ID', 'error');
+      }
+    });
+  }
+
   // Load Active QR Code URL
   try {
     const settings = await apiCall('/api/system/settings');
