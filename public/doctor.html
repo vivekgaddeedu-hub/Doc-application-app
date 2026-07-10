@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Portal - Consultations Management</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-section">
+      <div class="logo-icon">➕</div>
+      <div class="logo-text">MediConsult Platform</div>
+    </div>
+    <div class="nav-links">
+      <a href="/index.html" class="nav-item">Patient Portal</a>
+      <a href="/doctor.html" class="nav-item active">Doctor Portal</a>
+      <a href="/owner.html" class="nav-item">Admin Dashboard</a>
+    </div>
+  </header>
+
+  <main class="container">
+    
+    <!-- 1. DOCTOR LOGIN SECTION -->
+    <div id="doctor-login-section" class="glass-panel login-card" style="display: none;">
+      <h2 class="text-center mb-2">Doctor Portal Login</h2>
+      <p class="text-center text-muted-color mb-3">Please sign in with credentials provided by your Administrator.</p>
+      
+      <form id="doctor-login-form">
+        <div class="form-group">
+          <label for="doc-email">Email Address</label>
+          <input type="email" id="doc-email" placeholder="doctor@clinic.com" required>
+        </div>
+        <div class="form-group">
+          <label for="doc-password">Password</label>
+          <input type="password" id="doc-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-full mt-1">Sign In</button>
+      </form>
+    </div>
+
+    <!-- 2. DOCTOR LOGGED IN WORKSPACE -->
+    <div id="doctor-portal-section" style="display: none;">
+      <div class="flex-row mb-3">
+        <div>
+          <h2>Welcome, <span id="doctor-name-display" class="text-primary-color">Doctor</span></h2>
+          <p class="text-muted-color">Manage appointments, review proof, and schedule treatment sessions.</p>
+        </div>
+        <button id="doctor-logout-btn" class="btn btn-secondary">Sign Out</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-doc-appt" onclick="toggleDoctorPanel('appts')">Consultation Requests</button>
+        <button class="tab-btn" id="tab-doc-avail" onclick="toggleDoctorPanel('avail')">Configure Availability</button>
+      </div>
+
+      <!-- VIEW A: CONSULTATIONS PANEL -->
+      <div id="panel-doc-appts" class="tab-panel-doc">
+        <div class="glass-panel">
+          <h3 class="mb-2">Appointment Consultation Requests</h3>
+          <p class="text-secondary-color mb-3">Below are the patient submissions associated with your consulting fee. Review references and confirm slots.</p>
+          
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Appointment ID</th>
+                  <th>Patient Details</th>
+                  <th>Health Issue</th>
+                  <th>Payment Information</th>
+                  <th>Status</th>
+                  <th>Scheduled Date/Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="doctor-appointments-list">
+                <!-- Dynamically Populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW B: CONFIGURE AVAILABILITY -->
+      <div id="panel-doc-avail" class="tab-panel-doc" style="display: none;">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+          
+          <!-- Set Working Hours Form -->
+          <div class="glass-panel">
+            <h3 class="mb-2">Update Working Hours</h3>
+            <p class="text-secondary-color mb-3">Select a date and insert your slot intervals (e.g. "09:00 - 12:00, 14:00 - 18:00").</p>
+            
+            <form id="avail-form">
+              <div class="form-group">
+                <label for="avail-date">Target Date</label>
+                <input type="date" id="avail-date" required>
+              </div>
+              <div class="form-group">
+                <label for="avail-hours">Working Hours / Slots</label>
+                <input type="text" id="avail-hours" placeholder="e.g. 09:00 - 13:00, 15:00 - 18:00" required>
+              </div>
+              <div class="form-group">
+                <label for="avail-status">Availability Status</label>
+                <select id="avail-status">
+                  <option value="1">Available (Open for bookings)</option>
+                  <option value="0">Not Available (Close today)</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary w-full">Save Availability Config</button>
+            </form>
+          </div>
+
+          <!-- Availability Records Table -->
+          <div class="glass-panel">
+            <h3 class="mb-2">Your Availability Records</h3>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Working Hours</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="availability-list">
+                  <!-- Dynamically Populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL: ACCEPT / CONFIRM TIME -->
+  <div class="modal" id="accept-modal">
+    <div class="modal-content">
+      <button class="modal-close">&times;</button>
+      <h3 class="mb-2">Accept Appointment</h3>
+      <p class="text-secondary-color mb-3">Select the date and time slot you have designated for this patient. The system will auto-generate a Google Meet link.</p>
+      
+      <form id="accept-appt-form">
+        <input type="hidden" id="accept-appt-id">
+        <div class="form-group">
+          <label for="accept-date">Scheduled Date *</label>
+          <input type="date" id="accept-date" required>
+        </div>
+        <div class="form-group">
+          <label for="accept-time">Scheduled Time Slot *</label>
+          <input type="text" id="accept-time" placeholder="e.g. 10:30 AM" required>
+        </div>
+        <button type="submit" class="btn btn-success w-full">Confirm Slot & Create Meet Link</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REJECT / DECLINE -->
+  <div class="modal" id="reject-modal">
+    <div class="modal-content">
+      <button class="modal-close">&times;</button>
+      <h3 class="mb-2">Decline Appointment Request</h3>
+      <p class="text-secondary-color mb-3">Please state the reason for rejecting this consultation. The patient will be notified, and a refund transaction will be marked pending.</p>
+      
+      <form id="reject-appt-form">
+        <input type="hidden" id="reject-appt-id">
+        <div class="form-group">
+          <label for="reject-reason">Rejection Reason *</label>
+          <textarea id="reject-reason" rows="3" placeholder="e.g. Doctor is out of office, please select another time..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-danger w-full">Confirm Rejection</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PROCESS MANUAL REFUND -->
+  <div class="modal" id="refund-modal">
+    <div class="modal-content">
+      <button class="modal-close">&times;</button>
+      <h3 class="mb-2">Log Consultation Refund</h3>
+      <p class="text-secondary-color mb-3">Once you process the refund manually outside the system, fill out these details to update the client status record.</p>
+      
+      <form id="refund-appt-form">
+        <input type="hidden" id="refund-appt-id">
+        <div class="form-group">
+          <label for="refund-amount">Refunded Amount ($) *</label>
+          <input type="number" id="refund-amount" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label for="refund-date">Refund Date *</label>
+          <input type="date" id="refund-date" required>
+        </div>
+        <div class="form-group">
+          <label for="refund-ref">Refund Transaction ID / Reference *</label>
+          <input type="text" id="refund-ref" placeholder="REF12345678" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Update Refund Log</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: FOLLOW-UP BOOKING -->
+  <div class="modal" id="followup-modal">
+    <div class="modal-content">
+      <button class="modal-close">&times;</button>
+      <h3 class="mb-2">Schedule Follow-up Session</h3>
+      <p class="text-secondary-color mb-3">Create a linked follow-up consultation. This will maintain the original record intact and generate a new Appointment ID and Google Meet link.</p>
+      
+      <form id="followup-appt-form">
+        <input type="hidden" id="followup-appt-id">
+        <div class="form-group">
+          <label for="followup-date">Follow-up Date *</label>
+          <input type="date" id="followup-date" required>
+        </div>
+        <div class="form-group">
+          <label for="followup-time">Follow-up Time Slot *</label>
+          <input type="text" id="followup-time" placeholder="e.g. 11:30 AM" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Schedule Follow-up</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    function toggleDoctorPanel(panel) {
+      document.querySelectorAll('#doctor-portal-section .tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tab-doc-' + panel).classList.add('active');
+
+      if (panel === 'appts') {
+        document.getElementById('panel-doc-appts').style.display = 'block';
+        document.getElementById('panel-doc-avail').style.display = 'none';
+        loadDoctorAppointments();
+      } else {
+        document.getElementById('panel-doc-appts').style.display = 'none';
+        document.getElementById('panel-doc-avail').style.display = 'block';
+        loadDoctorAvailability();
+      }
+    }
+  </script>
+</body>
+</html>

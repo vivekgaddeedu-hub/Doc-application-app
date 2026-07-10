@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Appointment Consultation Portal</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-section">
+      <div class="logo-icon">➕</div>
+      <div class="logo-text">MediConsult Platform</div>
+    </div>
+    <div class="nav-links">
+      <a href="/index.html" class="nav-item active">Patient Portal</a>
+      <a href="/doctor.html" class="nav-item">Doctor Portal</a>
+      <a href="/owner.html" class="nav-item">Admin Dashboard</a>
+    </div>
+  </header>
+
+  <!-- Main Patient Workspace -->
+  <main class="container">
+    <div class="text-center mb-3">
+      <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Online Consultation Portal</h1>
+      <p class="text-secondary-color" style="max-width: 600px; margin: 0 auto;">Connect with specialized doctors, secure your consultation slot instantly by completing payment, and track the status of your meeting link.</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-book" onclick="togglePatientTab('book')">Request Appointment</button>
+      <button class="tab-btn" id="tab-status" onclick="togglePatientTab('status')">Track Appointment Status</button>
+    </div>
+
+    <!-- TAB 1: Request Appointment Form -->
+    <div id="patient-book-section" class="glass-panel">
+      <h2 class="mb-2">Appointment Request</h2>
+      <form id="booking-form" enctype="multipart/form-data">
+        
+        <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+          <!-- Left Column -->
+          <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <div class="form-group">
+              <label for="doctor_id">Select Doctor & Specialization *</label>
+              <select name="doctor_id" id="doctor_id" required>
+                <!-- Dynamically Populated -->
+              </select>
+              <div id="fee-display" class="alert alert-success mt-1" style="display: none; padding: 0.5rem 1rem; font-weight: 600;">
+                Consultation Fee: -
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="patient_name">Full Name *</label>
+              <input type="text" name="patient_name" id="patient_name" placeholder="John Doe" required>
+            </div>
+
+            <div class="form-group">
+              <label for="patient_email">Email Address *</label>
+              <input type="email" name="patient_email" id="patient_email" placeholder="john@example.com" required>
+            </div>
+
+            <div class="form-group">
+              <label for="patient_phone">Mobile Phone Number *</label>
+              <input type="tel" name="patient_phone" id="patient_phone" placeholder="+1234567890" required>
+            </div>
+
+            <div class="form-group">
+              <label for="health_issue">Health Issue Summary *</label>
+              <textarea name="health_issue" id="health_issue" rows="4" placeholder="Briefly describe your symptoms or reason for consulting the doctor..." required></textarea>
+            </div>
+          </div>
+
+          <!-- Right Column (Payment Section) -->
+          <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border); padding: 1.5rem; border-radius: var(--radius-md); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;">
+            <h3 class="text-center">Consultation Payment</h3>
+            <p class="text-muted-color text-center" style="font-size: 0.85rem; max-width: 300px;">To schedule your booking, scan the QR code using your payment app, complete the transaction outside this platform, and upload details below.</p>
+            
+            <img id="payment-qr-image" class="qr-image-display" src="/uploads/default_qr.png" alt="Static Payment QR Code">
+
+            <div class="form-group w-full">
+              <label for="payment_ref">Payment Transaction ID / Reference *</label>
+              <input type="text" name="payment_ref" id="payment_ref" placeholder="TXN12345678" required>
+            </div>
+
+            <div class="form-group w-full">
+              <label for="payment_proof">Upload Payment Proof (Image/PDF) *</label>
+              <input type="file" name="payment_proof" id="payment_proof" accept="image/*,application/pdf" required>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full mt-1">Submit Consultation Request</button>
+      </form>
+    </div>
+
+    <!-- TAB 2: Track Status View -->
+    <div id="patient-status-section" class="glass-panel" style="display: none;">
+      <div id="check-status-form-container">
+        <h2 class="mb-2">Track Appointment Status</h2>
+        <p class="text-secondary-color mb-3">Enter your unique Appointment ID to access your consultation details. To protect your details, we will send an OTP confirmation to your registered email and phone.</p>
+        
+        <form id="check-status-form">
+          <div class="form-group">
+            <label for="status-appt-id">Appointment ID *</label>
+            <input type="text" name="appointmentId" id="status-appt-id" placeholder="APT-YYYYMMDD-XXXXXX" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-full">Verify Appointment ID</button>
+        </form>
+      </div>
+
+      <!-- OTP SECTION -->
+      <div id="otp-section" style="display: none;" class="text-center">
+        <h2 class="mb-2">Enter Verification Code</h2>
+        <p class="text-secondary-color mb-2">We have sent a 6-digit verification code to the registered details of appointment <strong id="otp-target-id">-</strong>.</p>
+        
+        <form id="otp-form" style="max-width: 320px; margin: 0 auto;">
+          <div class="form-group">
+            <label for="otp-code">One-Time Password (OTP)</label>
+            <input type="text" id="otp-code" placeholder="123456" maxlength="6" pattern="[0-9]{6}" required style="letter-spacing: 0.5em; text-align: center; font-size: 1.25rem;">
+          </div>
+          <button type="submit" class="btn btn-primary w-full">Verify OTP</button>
+        </form>
+      </div>
+
+      <!-- STATUS RESULT DETAILS -->
+      <div id="status-details-section" style="display: none;">
+        <!-- Dynamically Populated -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Success Modal -->
+  <div class="modal" id="booking-success-modal">
+    <div class="modal-content text-center">
+      <button class="modal-close">&times;</button>
+      <div style="font-size: 3rem; color: var(--success); margin-bottom: 1rem;">🎉</div>
+      <h2 class="mb-1">Request Submitted Successfully!</h2>
+      <p class="text-secondary-color mb-2">Your consultation request is now under review by the doctor. Please save your Appointment ID to track updates or OTP verifications.</p>
+      <div style="background: rgba(15,23,42,0.8); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 1.25rem; font-weight: 700; color: var(--primary); font-family: monospace;" id="success-appt-id">
+        APT-00000000-000000
+      </div>
+      <button class="btn btn-secondary mt-3 btn-close-modal">Done</button>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    function togglePatientTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+
+      if (tab === 'book') {
+        document.getElementById('patient-book-section').style.display = 'block';
+        document.getElementById('patient-status-section').style.display = 'none';
+      } else {
+        document.getElementById('patient-book-section').style.display = 'none';
+        document.getElementById('patient-status-section').style.display = 'block';
+        
+        // Reset check status view
+        document.getElementById('check-status-form').style.display = 'block';
+        document.getElementById('otp-section').style.display = 'none';
+        document.getElementById('status-details-section').style.display = 'none';
+        document.getElementById('status-appt-id').value = '';
+      }
+    }
+  </script>
+</body>
+</html>

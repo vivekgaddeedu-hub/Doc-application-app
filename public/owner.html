@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Portal - System Management & Administration</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-section">
+      <div class="logo-icon">➕</div>
+      <div class="logo-text">MediConsult Platform</div>
+    </div>
+    <div class="nav-links">
+      <a href="/index.html" class="nav-item">Patient Portal</a>
+      <a href="/doctor.html" class="nav-item">Doctor Portal</a>
+      <a href="/owner.html" class="nav-item active">Admin Dashboard</a>
+    </div>
+  </header>
+
+  <main class="container">
+    
+    <!-- 1. OWNER LOGIN SECTION -->
+    <div id="owner-login-section" class="glass-panel login-card" style="display: none;">
+      <h2 class="text-center mb-2">Owner Portal Login</h2>
+      <p class="text-center text-muted-color mb-3">Sign in with owner administrative credentials to manage the platform.</p>
+      
+      <form id="owner-login-form">
+        <div class="form-group">
+          <label for="owner-email-input">Email Address</label>
+          <input type="email" id="owner-email-input" placeholder="admin@doctorapp.com" required>
+        </div>
+        <div class="form-group">
+          <label for="owner-password-input">Password</label>
+          <input type="password" id="owner-password-input" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-full mt-1">Sign In</button>
+      </form>
+    </div>
+
+    <!-- 2. OWNER LOGGED IN WORKSPACE -->
+    <div id="owner-portal-section" style="display: none;">
+      <div class="flex-row mb-3">
+        <div>
+          <h2>Owner Control Dashboard</h2>
+          <p class="text-muted-color">Manage consultation fees, register doctor profile records, and audit financial status logs.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button onclick="triggerReportDownload()" class="btn btn-primary">Download Excel Report</button>
+          <button id="owner-logout-btn" class="btn btn-secondary">Sign Out</button>
+        </div>
+      </div>
+
+      <!-- STATS OVERVIEW CARDS -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total-doctors">0</div>
+          <div class="stat-label">Total Doctors</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total-appts">0</div>
+          <div class="stat-label">Total Bookings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-pending-appts">0</div>
+          <div class="stat-label">Pending Approval</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-scheduled-appts">0</div>
+          <div class="stat-label">Scheduled</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-completed-appts">0</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-rejected-appts">0</div>
+          <div class="stat-label">Rejected</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--success);">
+          <div class="stat-value" style="color: var(--success);" id="stat-revenue">$0.00</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+        <div class="stat-card" style="border-color: var(--danger);">
+          <div class="stat-value" style="color: var(--danger);" id="stat-refunds">$0.00</div>
+          <div class="stat-label">Total Refunds</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="panel-dashboard">Platform Monitor</button>
+        <button class="tab-btn" data-tab="panel-doctors">Manage Doctors</button>
+      </div>
+
+      <!-- PANEL 1: MONITOR & SETTINGS -->
+      <div id="panel-dashboard" class="tab-panel">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+          
+          <!-- Sub-grid: Payment Setting & Reminders -->
+          <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+            <!-- QR Settings -->
+            <div class="glass-panel" style="margin-bottom: 0;">
+              <h3>Payment Settings</h3>
+              <p class="text-secondary-color mb-3">View or upload the static payment QR code presented to patients during the consultation booking flow.</p>
+              
+              <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;">
+                <img id="owner-qr-preview" src="/uploads/default_qr.png" alt="Static Payment QR Code" style="width: 150px; height: 150px; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover;">
+                <form id="qr-upload-form" enctype="multipart/form-data" style="flex: 1; min-width: 250px;">
+                  <div class="form-group">
+                    <label for="qr-file-input">Choose QR Image File</label>
+                    <input type="file" id="qr-file-input" accept="image/*" required>
+                  </div>
+                  <button type="submit" class="btn btn-secondary">Upload QR Image</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Reminder Controls -->
+            <div class="glass-panel" style="margin-bottom: 0;">
+              <h3>System Actions & Reminders</h3>
+              <p class="text-secondary-color mb-3">A daily availability reminder email is automatically configured to run at 6:00 AM. You can also trigger this manually for testing.</p>
+              <button id="trigger-reminders-btn" class="btn btn-secondary">Trigger Reminders Manually</button>
+            </div>
+          </div>
+
+          <!-- Recent Appointments -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <h3>Recent Booking Log</h3>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Appointment ID</th>
+                    <th>Patient Name</th>
+                    <th>Doctor Name</th>
+                    <th>Consultation Fee</th>
+                    <th>Status</th>
+                    <th>Meeting Slot</th>
+                    <th>Created At</th>
+                  </tr>
+                </thead>
+                <tbody id="owner-recent-appointments">
+                  <!-- Dynamically Populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Notification Log -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <h3>System Dispatch Log (Emails & WhatsApp)</h3>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Recipient</th>
+                    <th>Subject/Message Details</th>
+                    <th>Status</th>
+                    <th>Dispatched At</th>
+                  </tr>
+                </thead>
+                <tbody id="owner-notifications-log">
+                  <!-- Dynamically Populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PANEL 2: MANAGE DOCTORS -->
+      <div id="panel-doctors" class="tab-panel" style="display: none;">
+        <div class="glass-panel">
+          <div class="flex-row mb-3">
+            <div>
+              <h3>Registered Doctors Directory</h3>
+              <p class="text-secondary-color">Create accounts, update profile settings, or enable/disable consultation access.</p>
+            </div>
+            <button onclick="openAddDoctorModal()" class="btn btn-primary">Add Doctor Account</button>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Doctor Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Specialization</th>
+                  <th>Consultation Fee</th>
+                  <th>Access Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="owner-doctors-list">
+                <!-- Dynamically Populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL: ADD / EDIT DOCTOR -->
+  <div class="modal" id="doctor-modal">
+    <div class="modal-content">
+      <button class="modal-close">&times;</button>
+      <h3 class="mb-2" id="modal-title-doc">Add New Doctor Account</h3>
+      
+      <form id="owner-doc-form">
+        <input type="hidden" id="doc-id-field">
+        
+        <div class="form-group">
+          <label for="doc-name-field">Full Name *</label>
+          <input type="text" id="doc-name-field" placeholder="Dr. Sarah Johnson" required>
+        </div>
+
+        <div class="form-group">
+          <label for="doc-email-field">Email Address *</label>
+          <input type="email" id="doc-email-field" placeholder="doctor@clinic.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="doc-phone-field">Mobile Phone</label>
+          <input type="tel" id="doc-phone-field" placeholder="+19998887777">
+        </div>
+
+        <div class="form-group">
+          <label for="doc-spec-field">Specialization *</label>
+          <input type="text" id="doc-spec-field" placeholder="Cardiology" required>
+        </div>
+
+        <div class="form-group">
+          <label for="doc-fee-field">Consultation Fee ($) *</label>
+          <input type="number" id="doc-fee-field" step="0.01" placeholder="150.00" required>
+        </div>
+
+        <div class="form-group">
+          <label for="doc-pass-field">Account Password *</label>
+          <input type="password" id="doc-pass-field" placeholder="••••••••">
+          <small id="doc-pass-help" class="text-muted-color" style="display: none;">Leave blank to preserve current password.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="doc-active-field">Access Status</label>
+          <select id="doc-active-field">
+            <option value="1">Active (Allow Access & Bookings)</option>
+            <option value="0">Disabled (Deactivate account)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full mt-1">Save Account Records</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
