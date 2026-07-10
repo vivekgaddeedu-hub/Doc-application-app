@@ -203,6 +203,48 @@ async function initPatientPortal() {
     });
   }
 
+  // Helper to compress images on mobile client before uploading
+  function compressImage(file, maxWidth = 1024, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error('Canvas toBlob failed'));
+              }
+            },
+            file.type || 'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  }
+
   // Submit Booking Form
   if (bookingForm) {
     bookingForm.addEventListener('submit', async (e) => {
@@ -214,7 +256,21 @@ async function initPatientPortal() {
 
       const formData = new FormData(bookingForm);
 
+      // Compress image payment proof if uploaded from mobile to avoid EPIPE/fetch limits
+      const paymentProofFile = formData.get('payment_proof');
+      if (paymentProofFile && paymentProofFile.type.startsWith('image/')) {
+        try {
+          submitBtn.innerHTML = '<div class="loading-spinner"></div> Optimizing image...';
+          const compressedBlob = await compressImage(paymentProofFile, 1024, 0.8);
+          // Replace file in Form Data
+          formData.set('payment_proof', compressedBlob, paymentProofFile.name || 'proof.jpg');
+        } catch (compressErr) {
+          console.warn('Image compression failed, using original file:', compressErr);
+        }
+      }
+
       try {
+        submitBtn.innerHTML = '<div class="loading-spinner"></div> Uploading details...';
         const response = await fetch('/api/public/appointments/book', {
           method: 'POST',
           body: formData
