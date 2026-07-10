@@ -107,28 +107,14 @@
     <div id="patient-status-section" class="glass-panel" style="display: none;">
       <div id="check-status-form-container">
         <h2 class="mb-2">Track Appointment Status</h2>
-        <p class="text-secondary-color mb-3">Enter your unique Appointment ID to access your consultation details. To protect your details, we will send an OTP confirmation to your registered email and phone.</p>
+        <p class="text-secondary-color mb-3">Enter your unique Appointment ID to instantly search and access your consultation details.</p>
         
         <form id="check-status-form">
           <div class="form-group">
             <label for="status-appt-id">Appointment ID *</label>
             <input type="text" name="appointmentId" id="status-appt-id" placeholder="APT-YYYYMMDD-XXXXXX" required>
           </div>
-          <button type="submit" class="btn btn-primary w-full">Verify Appointment ID</button>
-        </form>
-      </div>
-
-      <!-- OTP SECTION -->
-      <div id="otp-section" style="display: none;" class="text-center">
-        <h2 class="mb-2">Enter Verification Code</h2>
-        <p class="text-secondary-color mb-2">We have sent a 6-digit verification code to the registered details of appointment <strong id="otp-target-id">-</strong>.</p>
-        
-        <form id="otp-form" style="max-width: 320px; margin: 0 auto;">
-          <div class="form-group">
-            <label for="otp-code">One-Time Password (OTP)</label>
-            <input type="text" id="otp-code" placeholder="123456" maxlength="6" pattern="[0-9]{6}" required style="letter-spacing: 0.5em; text-align: center; font-size: 1.25rem;">
-          </div>
-          <button type="submit" class="btn btn-primary w-full">Verify OTP</button>
+          <button type="submit" class="btn btn-primary w-full">Search Appointment</button>
         </form>
       </div>
 

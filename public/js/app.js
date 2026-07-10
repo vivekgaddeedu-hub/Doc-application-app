@@ -293,7 +293,7 @@ async function initPatientPortal() {
     });
   }
 
-  // Check Status Request OTP Form
+  // Check Status Direct Search Form
   if (checkStatusForm) {
     checkStatusForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -302,20 +302,10 @@ async function initPatientPortal() {
       if (!apptId) return;
 
       submitBtn.disabled = true;
-      submitBtn.innerHTML = 'Sending OTP...';
+      submitBtn.innerHTML = '<div class="loading-spinner"></div> Searching...';
 
       try {
-        const res = await apiCall('/api/public/appointments/request-otp', 'POST', { appointmentId: apptId });
-        showToast('OTP sent successfully!');
-        if (res.otpForTesting) {
-          console.log(`[Developer Note] OTP for verification of ${apptId} is: ${res.otpForTesting}`);
-          showToast(`[TESTING ONLY] Verification Code (OTP): ${res.otpForTesting}. Code printed to browser console.`);
-        }
-        
-        // Switch views
-        checkStatusForm.style.display = 'none';
-        otpSection.style.display = 'block';
-        document.getElementById('otp-target-id').textContent = apptId;
+        await loadAppointmentStatusDetails(apptId);
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
@@ -324,48 +314,23 @@ async function initPatientPortal() {
       }
     });
   }
-
-  // Verify OTP Form
-  if (otpForm) {
-    otpForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const apptId = document.getElementById('status-appt-id').value.trim();
-      const otp = document.getElementById('otp-code').value.trim();
-      const submitBtn = otpForm.querySelector('button[type="submit"]');
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = 'Verifying...';
-
-      try {
-        const res = await apiCall('/api/public/appointments/verify-otp', 'POST', { appointmentId: apptId, otp });
-        showToast('Verification Successful!');
-        
-        // Save temporary single appointment access token to session
-        sessionStorage.setItem(`status_token_${apptId}`, res.token);
-
-        // Fetch details
-        await loadAppointmentStatusDetails(apptId, res.token);
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Verify OTP';
-      }
-    });
-  }
 }
 
-async function loadAppointmentStatusDetails(apptId, token) {
+async function loadAppointmentStatusDetails(apptId) {
   const statusDetailsSection = document.getElementById('status-details-section');
-  const otpSection = document.getElementById('otp-section');
+  const checkStatusFormContainer = document.getElementById('check-status-form-container');
 
   try {
-    const headers = { 'Authorization': `Bearer ${token}` };
-    const res = await fetch(`/api/public/appointments/${apptId}/status`, { headers });
-    if (!res.ok) throw new Error('Failed to download appointment status');
+    const res = await fetch(`/api/public/appointments/${apptId}/status`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error('Appointment ID not found. Please verify the ID and try again.');
+      }
+      throw new Error('Failed to retrieve appointment status');
+    }
     
     const appt = await res.json();
-    otpSection.style.display = 'none';
+    if (checkStatusFormContainer) checkStatusFormContainer.style.display = 'none';
     statusDetailsSection.style.display = 'block';
 
     let scheduleSectionHtml = '';
@@ -422,6 +387,7 @@ async function loadAppointmentStatusDetails(apptId, token) {
 
   } catch (err) {
     showToast(err.message, 'error');
+    throw err;
   }
 }
 

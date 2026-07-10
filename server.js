@@ -229,7 +229,7 @@ app.post('/api/public/appointments/book', upload.single('payment_proof'), async 
 
   try {
     // Verify doctor exists and active, retrieve fee
-    const docRes = await db.query(`SELECT name, fee, email FROM doctors WHERE id = $1`, [parseInt(doctor_id)]);
+    const docRes = await db.query(`SELECT name, fee, email, phone FROM doctors WHERE id = $1`, [parseInt(doctor_id)]);
     if (docRes.rows.length === 0) {
       return res.status(404).json({ error: 'Doctor not found or inactive.' });
     }
@@ -244,39 +244,21 @@ app.post('/api/public/appointments/book', upload.single('payment_proof'), async 
       [apptId, parseInt(doctor_id), patient_name, patient_phone, patient_email, health_issue, fee, payment_ref, proofPath, 'pending_approval']
     );
 
-    // Send email to Patient confirming receipt
-    await mail.sendEmail({
-      to: patient_email,
-      subject: `Appointment Booking Request Received - ${apptId}`,
-      html: `
-        <h3>Dear ${patient_name},</h3>
-        <p>Thank you for submitting your consultation request. We have received your booking details and payment proof.</p>
-        <p><strong>Appointment ID:</strong> ${apptId}</p>
-        <p><strong>Doctor:</strong> Dr. ${doctor.name}</p>
-        <p><strong>Consultation Fee Paid:</strong> $${fee}</p>
-        <p><strong>Payment Ref:</strong> ${payment_ref}</p>
-        <br>
-        <p>Your request is currently pending review. You can track the status using your Appointment ID inside the patient status portal.</p>
-        <br>
-        <p>Regards,<br>Online Consultation Support</p>
-      `,
+    // Notify Patient via WhatsApp
+    await mail.sendWhatsApp({
+      to: patient_phone,
+      message: `Dear ${patient_name}, your consultation request for Dr. ${doctor.name} has been received. ID: ${apptId}. Consultation fee: $${fee}. Ref: ${payment_ref}. You can track status directly at the patient portal.`,
       appointmentId: apptId
     });
 
-    // Notify Doctor via Email
-    await mail.sendEmail({
-      to: doctor.email,
-      subject: `New Appointment Request: ${apptId}`,
-      html: `
-        <h3>Hello Dr. ${doctor.name},</h3>
-        <p>You have received a new consultation request.</p>
-        <p><strong>Patient Name:</strong> ${patient_name}</p>
-        <p><strong>Health Issue:</strong> ${health_issue}</p>
-        <p><strong>Appointment ID:</strong> ${apptId}</p>
-        <p>Please log in to your dashboard to review this request, verify the payment proof, and either accept or reject the appointment.</p>
-      `,
-      appointmentId: apptId
-    });
+    // Notify Doctor via WhatsApp
+    if (doctor.phone) {
+      await mail.sendWhatsApp({
+        to: doctor.phone,
+        message: `Hello Dr. ${doctor.name}, you have a new appointment request (ID: ${apptId}) from patient ${patient_name} awaiting review on your portal dashboard.`,
+        appointmentId: apptId
+      });
+    }
 
     res.status(201).json({ success: true, appointmentId: apptId });
   } catch (err) {
@@ -285,91 +267,9 @@ app.post('/api/public/appointments/book', upload.single('payment_proof'), async 
   }
 });
 
-// --- SECURE STATUS CHECK & OTP VERIFICATION ---
-app.post('/api/public/appointments/request-otp', async (req, res) => {
-  const { appointmentId } = req.body;
-  if (!appointmentId) return res.status(400).json({ error: 'Appointment ID is required.' });
-
-  try {
-    const result = await db.query(`SELECT patient_email, patient_phone FROM appointments WHERE id = $1`, [appointmentId]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Appointment ID not found.' });
-    }
-
-    const { patient_email, patient_phone } = result.rows[0];
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes from now
-
-    otpStore.set(appointmentId, { otp, expires });
-
-    // Send OTP email
-    await mail.sendEmail({
-      to: patient_email,
-      subject: `Your Secure OTP Status Verification - ${appointmentId}`,
-      html: `
-        <h3>Secure Verification Code</h3>
-        <p>You have requested to view the status of Appointment ID: <strong>${appointmentId}</strong>.</p>
-        <p>Your one-time verification code (OTP) is: <strong style="font-size: 24px; color: #0d9488; letter-spacing: 2px;">${otp}</strong></p>
-        <p>This code is valid for 10 minutes.</p>
-        <br>
-        <p>If you did not request this verification, please ignore this email.</p>
-      `,
-      appointmentId
-    });
-
-    // Send mock WhatsApp OTP if desired
-    await mail.sendWhatsApp({
-      to: patient_phone,
-      message: `Your Verification Code for appointment ${appointmentId} is ${otp}. Valid for 10 mins.`,
-      appointmentId
-    });
-
-    // Provide OTP in response for testing convenience
-    res.json({ message: 'OTP sent to your registered email and phone number.', otpForTesting: otp });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/public/appointments/verify-otp', async (req, res) => {
-  const { appointmentId, otp } = req.body;
-  if (!appointmentId || !otp) {
-    return res.status(400).json({ error: 'Appointment ID and OTP are required.' });
-  }
-
-  const stored = otpStore.get(appointmentId);
-  if (!stored) {
-    return res.status(400).json({ error: 'No verification request found. Please request a new code.' });
-  }
-
-  if (Date.now() > stored.expires) {
-    otpStore.delete(appointmentId);
-    return res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
-  }
-
-  if (stored.otp !== otp.trim()) {
-    return res.status(400).json({ error: 'Invalid verification code. Please try again.' });
-  }
-
-  // Clear OTP on successful validation
-  otpStore.delete(appointmentId);
-
-  // Issue a secure status access token valid for viewing this appointment only
-  const viewToken = generateToken({ appointmentId, access: true });
-  res.json({ token: viewToken });
-});
-
+// --- PUBLIC STATUS CHECK (DIRECT LOOKUP BY ID) ---
 app.get('/api/public/appointments/:id/status', async (req, res) => {
   const { id } = req.params;
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Access unauthorized. Please complete OTP verification.' });
-  }
-  const token = authHeader.split(' ')[1];
-  const accessClaims = verifyToken(token);
-  if (!accessClaims || accessClaims.appointmentId !== id || !accessClaims.access) {
-    return res.status(403).json({ error: 'Access forbidden. Verification invalid or expired.' });
-  }
 
   try {
     const queryStr = `
@@ -487,8 +387,6 @@ app.post('/api/doctor/appointments/:id/accept', authenticateRole('doctor'), asyn
       <p><strong>Google Meet Link:</strong> <a href="${meetLink}">${meetLink}</a></p>
     `;
 
-    await mail.sendEmail({ to: clientMail, subject: clientSubject, html: clientBody, appointmentId: appt.id });
-    await mail.sendEmail({ to: req.user.email, subject: docSubject, html: docBody, appointmentId: appt.id });
     await mail.sendWhatsApp({
       to: appt.patient_phone,
       message: `Your appointment is confirmed with Dr. ${req.user.name} on ${scheduled_date} at ${scheduled_time}. Meet: ${meetLink}`,
@@ -531,7 +429,6 @@ app.post('/api/doctor/appointments/:id/reject', authenticateRole('doctor'), asyn
       <p>We will update you as soon as the refund transaction reference is logged.</p>
     `;
 
-    await mail.sendEmail({ to: clientMail, subject: clientSubject, html: clientBody, appointmentId: appt.id });
     await mail.sendWhatsApp({
       to: appt.patient_phone,
       message: `Your appointment ${appt.id} was rejected: ${reason}. Refund is pending.`,
@@ -588,7 +485,6 @@ app.post('/api/doctor/appointments/:id/refund', authenticateRole('doctor'), asyn
       <p>We appreciate your patience. Please reach out to us if you have any questions.</p>
     `;
 
-    await mail.sendEmail({ to: clientMail, subject: clientSubject, html: clientBody, appointmentId: appt.id });
     await mail.sendWhatsApp({
       to: appt.patient_phone,
       message: `Refund of $${refund_amount} processed for appointment ${appt.id}. Ref: ${refund_ref}`,
@@ -652,7 +548,6 @@ app.post('/api/doctor/appointments/:id/followup', authenticateRole('doctor'), as
       <p>This is linked to your previous consultation history (ID: ${orig.id}).</p>
     `;
 
-    await mail.sendEmail({ to: orig.patient_email, subject: clientSubject, html: clientBody, appointmentId: newApptId });
     await mail.sendWhatsApp({
       to: orig.patient_phone,
       message: `Follow-up consultation is scheduled with Dr. ${req.user.name} on ${scheduled_date} at ${scheduled_time}. Meet: ${newMeetLink}`,
@@ -772,23 +667,16 @@ async function sendDailyAvailabilityReminders() {
   console.log('[Scheduler] Executing daily availability reminders...');
   try {
     const activeDb = db.getDbType() === 'postgres' ? true : 1;
-    const result = await db.query(`SELECT id, name, email FROM doctors WHERE is_active = $1`, [activeDb]);
+    const result = await db.query(`SELECT id, name, email, phone FROM doctors WHERE is_active = $1`, [activeDb]);
     const activeDoctors = result.rows;
 
     for (const doc of activeDoctors) {
-      await mail.sendEmail({
-        to: doc.email,
-        subject: 'Daily Action Required: Update Availability & Working Hours',
-        html: `
-          <h3>Good Morning Dr. ${doc.name},</h3>
-          <p>This is your daily 6:00 AM reminder to update your availability and working hours for today.</p>
-          <p>Keeping your schedule updated helps patients view and choose correct times slots for consultation.</p>
-          <br>
-          <a href="${process.env.APP_URL || 'http://localhost:3000'}/doctor.html" style="background-color: #0d9488; color: white; padding: 10px 18px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Update Availability Now</a>
-          <br><br>
-          <p>Thank you,<br>System Administrator</p>
-        `
-      });
+      if (doc.phone) {
+        await mail.sendWhatsApp({
+          to: doc.phone,
+          message: `Good Morning Dr. ${doc.name}, this is your daily 6:00 AM reminder to update your availability and working hours for today on the doctor portal.`
+        });
+      }
     }
     console.log(`[Scheduler] Availability reminders dispatched successfully to ${activeDoctors.length} doctors.`);
     return activeDoctors.length;
