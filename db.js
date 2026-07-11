@@ -65,6 +65,7 @@ async function setupSchema() {
         fee NUMERIC NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         password_hash TEXT NOT NULL,
+        qr_code_path TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -148,6 +149,7 @@ async function setupSchema() {
         fee REAL NOT NULL,
         is_active INTEGER DEFAULT 1,
         password_hash TEXT NOT NULL,
+        qr_code_path TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -222,6 +224,22 @@ async function setupSchema() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
+  }
+
+  // Schema Migration check for qr_code_path in doctors table
+  try {
+    if (dbType === 'postgres') {
+      await query(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS qr_code_path TEXT`);
+    } else {
+      const info = await query(`PRAGMA table_info(doctors)`);
+      const hasColumn = info.rows.some(col => col.name === 'qr_code_path');
+      if (!hasColumn) {
+        await query(`ALTER TABLE doctors ADD COLUMN qr_code_path TEXT`);
+        console.log('[SQLite Migration] Added qr_code_path column to doctors table.');
+      }
+    }
+  } catch (err) {
+    console.error('[Schema Migration Warning] failed to migrate qr_code_path:', err.message);
   }
 
   // Seed default settings if they do not exist

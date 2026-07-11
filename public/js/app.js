@@ -232,6 +232,7 @@ async function initPatientPortal() {
           const opt = document.createElement('option');
           opt.value = doc.id;
           opt.dataset.fee = doc.fee;
+          opt.dataset.qr = doc.qr_code_path || '';
           opt.textContent = `Dr. ${doc.name} (Fee: $${doc.fee})`;
           optgroup.appendChild(opt);
         });
@@ -241,12 +242,26 @@ async function initPatientPortal() {
       showToast('Error loading active doctors: ' + err.message, 'error');
     }
 
-    doctorSelect.addEventListener('change', () => {
+    doctorSelect.addEventListener('change', async () => {
       const selected = doctorSelect.options[doctorSelect.selectedIndex];
       const fee = selected.dataset.fee;
+      const customQr = selected.dataset.qr;
       if (feeDisplay) {
         feeDisplay.textContent = `Consultation Fee: $${fee}`;
         feeDisplay.style.display = 'block';
+      }
+
+      if (qrImage) {
+        if (customQr && customQr.trim() !== '') {
+          qrImage.src = customQr;
+        } else {
+          try {
+            const settings = await apiCall('/api/system/settings');
+            qrImage.src = settings.payment_qr_code_url || '/uploads/default_qr.png';
+          } catch (err) {
+            qrImage.src = '/uploads/default_qr.png';
+          }
+        }
       }
     });
   }
@@ -425,6 +440,7 @@ async function loadAppointmentStatusDetails(apptId) {
       <div style="display: flex; flex-direction: column; gap: 0.75rem;">
         <p><strong>Appointment ID:</strong> ${appt.id}</p>
         <p><strong>Consultation Status:</strong> ${getStatusBadge(appt.status)}</p>
+        ${appt.status === 'rejected' ? `<p><strong>Refund Status:</strong> <span class="badge ${appt.refund_status === 'refunded' ? 'badge-completed' : 'badge-pending'}">${appt.refund_status === 'refunded' ? 'Refunded' : 'Pending Refund'}</span></p>` : ''}
         <p><strong>Patient Name:</strong> ${appt.patient_name}</p>
         <p><strong>Contact Email:</strong> ${appt.patient_email}</p>
         <p><strong>Registered Doctor:</strong> Dr. ${appt.doctor_name || 'N/A'} (${appt.doctor_specialization || 'N/A'})</p>
@@ -607,11 +623,63 @@ async function initDoctorPortal() {
       }
     });
   }
+
+  const docQrForm = document.getElementById('doctor-qr-upload-form');
+  if (docQrForm) {
+    docQrForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('doctor-qr-file-input');
+      if (!fileInput.files[0]) return;
+
+      const fd = new FormData();
+      fd.append('qr_code', fileInput.files[0]);
+
+      const submitBtn = docQrForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+
+      try {
+        const token = Storage.getToken();
+        const res = await fetch('/api/doctor/settings/qr', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: fd
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+
+        showToast('Payment QR Code updated successfully.');
+        document.getElementById('doctor-qr-preview').src = result.url;
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
 }
 
 async function loadDoctorDashboard() {
   await loadDoctorAvailability();
   await loadDoctorAppointments();
+  await loadDoctorSettings();
+}
+
+async function loadDoctorSettings() {
+  const qrPreview = document.getElementById('doctor-qr-preview');
+  if (!qrPreview) return;
+
+  try {
+    const user = Storage.getUser();
+    const doctors = await apiCall('/api/public/doctors');
+    const currentDoc = doctors.find(d => d.id === user.id);
+    if (currentDoc && currentDoc.qr_code_path) {
+      qrPreview.src = currentDoc.qr_code_path;
+    } else {
+      qrPreview.src = '/uploads/default_qr.png';
+    }
+  } catch (err) {
+    console.error('Failed to load doctor settings:', err);
+  }
 }
 
 async function loadDoctorAvailability() {
@@ -859,39 +927,7 @@ async function initOwnerPortal() {
     });
   }
 
-  // QR Code upload
-  const qrUploadForm = document.getElementById('qr-upload-form');
-  if (qrUploadForm) {
-    qrUploadForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById('qr-file-input');
-      if (!fileInput.files[0]) return;
-
-      const fd = new FormData();
-      fd.append('qr_code', fileInput.files[0]);
-
-      const submitBtn = qrUploadForm.querySelector('button[type="submit"]');
-      submitBtn.disabled = true;
-
-      try {
-        const token = Storage.getToken();
-        const res = await fetch('/api/owner/settings/qr', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: fd
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error);
-
-        showToast('Payment QR Code updated successfully.');
-        document.getElementById('owner-qr-preview').src = result.url;
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-      }
-    });
-  }
+  // Owner Settings/QR configurations removed (moved to Doctor role)
 
   // Manual cron trigger
   const triggerRemindersBtn = document.getElementById('trigger-reminders-btn');

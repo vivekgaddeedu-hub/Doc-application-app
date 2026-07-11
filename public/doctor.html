@@ -62,6 +62,7 @@
       <div class="tabs">
         <button class="tab-btn active" id="tab-doc-appt" onclick="toggleDoctorPanel('appts')">Consultation Requests</button>
         <button class="tab-btn" id="tab-doc-avail" onclick="toggleDoctorPanel('avail')">Configure Availability</button>
+        <button class="tab-btn" id="tab-doc-settings" onclick="toggleDoctorPanel('settings')">My QR Code</button>
       </div>
 
       <!-- VIEW A: CONSULTATIONS PANEL -->
@@ -140,6 +141,25 @@
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- VIEW C: PROFILE SETTINGS PANEL -->
+      <div id="panel-doc-settings" class="tab-panel-doc" style="display: none;">
+        <div class="glass-panel">
+          <h3 class="mb-2">My Payment Settings</h3>
+          <p class="text-secondary-color mb-3">View or upload the custom payment QR code presented to patients when they book consultations with you.</p>
+          
+          <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;">
+            <img id="doctor-qr-preview" src="/uploads/default_qr.png" alt="Doctor Payment QR Code" style="width: 150px; height: 150px; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover;">
+            <form id="doctor-qr-upload-form" enctype="multipart/form-data" style="flex: 1; min-width: 250px;">
+              <div class="form-group">
+                <label for="doctor-qr-file-input">Choose QR Image File</label>
+                <input type="file" id="doctor-qr-file-input" accept="image/*" required>
+              </div>
+              <button type="submit" class="btn btn-secondary">Upload QR Image</button>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -240,14 +260,19 @@
       document.querySelectorAll('#doctor-portal-section .tab-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById('tab-doc-' + panel).classList.add('active');
 
+      document.getElementById('panel-doc-appts').style.display = 'none';
+      document.getElementById('panel-doc-avail').style.display = 'none';
+      document.getElementById('panel-doc-settings').style.display = 'none';
+
       if (panel === 'appts') {
         document.getElementById('panel-doc-appts').style.display = 'block';
-        document.getElementById('panel-doc-avail').style.display = 'none';
         loadDoctorAppointments();
-      } else {
-        document.getElementById('panel-doc-appts').style.display = 'none';
+      } else if (panel === 'avail') {
         document.getElementById('panel-doc-avail').style.display = 'block';
         loadDoctorAvailability();
+      } else if (panel === 'settings') {
+        document.getElementById('panel-doc-settings').style.display = 'block';
+        loadDoctorSettings();
       }
     }
   </script>

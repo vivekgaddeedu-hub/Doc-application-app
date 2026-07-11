@@ -228,17 +228,14 @@ app.get('/api/system/settings', async (req, res) => {
   }
 });
 
-app.post('/api/owner/settings/qr', authenticateRole('owner'), upload.single('qr_code'), async (req, res) => {
+app.post('/api/doctor/settings/qr', authenticateRole('doctor'), upload.single('qr_code'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No QR Code image was selected.' });
   }
   const fileUrl = `/uploads/${req.file.filename}`;
+  const docId = req.user.id;
   try {
-    await db.query(`INSERT INTO system_settings (key, value) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, ['payment_qr_code_url', fileUrl]);
-    // For SQLite, standard INSERT OR REPLACE handles key UNIQUE conflict. Our query parser handles standard $ placeholders
-    if (db.getDbType() === 'sqlite') {
-      await db.query(`INSERT OR REPLACE INTO system_settings (key, value) VALUES ($1, $2)`, ['payment_qr_code_url', fileUrl]);
-    }
+    await db.query(`UPDATE doctors SET qr_code_path = $1 WHERE id = $2`, [fileUrl, docId]);
     res.json({ message: 'QR Code updated successfully.', url: fileUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -329,7 +326,7 @@ app.get('/api/public/doctors', async (req, res) => {
   try {
     // Return list of active doctors only
     const activeDb = db.getDbType() === 'postgres' ? true : 1;
-    const result = await db.query(`SELECT id, name, specialization, fee FROM doctors WHERE is_active = $1 ORDER BY specialization, name`, [activeDb]);
+    const result = await db.query(`SELECT id, name, specialization, fee, qr_code_path FROM doctors WHERE is_active = $1 ORDER BY specialization, name`, [activeDb]);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -589,11 +586,11 @@ app.post('/api/doctor/appointments/:id/refund', authenticateRole('doctor'), asyn
   try {
     const result = await db.query(
       `UPDATE appointments SET refund_status = 'refunded', refund_amount = $1, refund_date = $2, refund_ref = $3 
-       WHERE id = $4 RETURNING *`,
-      [parseFloat(refund_amount), refund_date, refund_ref, id]
+       WHERE id = $4 AND doctor_id = $5 RETURNING *`,
+      [parseFloat(refund_amount), refund_date, refund_ref, id, req.user.id]
     );
 
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Appointment not found.' });
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Appointment not found or not assigned to you.' });
 
     const appt = result.rows[0];
 
