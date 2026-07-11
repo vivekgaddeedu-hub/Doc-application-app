@@ -124,6 +124,18 @@ async function setupSchema() {
         sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        role TEXT NOT NULL,
+        associated_id TEXT NOT NULL,
+        endpoint TEXT UNIQUE NOT NULL,
+        keys_p256dh TEXT NOT NULL,
+        keys_auth TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
   } else {
     // SQLite Schema
     await query(`
@@ -196,6 +208,18 @@ async function setupSchema() {
         body TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'sent',
         sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role TEXT NOT NULL,
+        associated_id TEXT NOT NULL,
+        endpoint TEXT UNIQUE NOT NULL,
+        keys_p256dh TEXT NOT NULL,
+        keys_auth TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
   }

@@ -21,3 +21,6 @@ yarn-error.log*
 # Uploaded payment proofs (exclude default assets)
 public/uploads/payment_proof-*
 public/uploads/paymentProof-*
+
+# VAPID private credentials keys
+.vapid-keys.json

@@ -6,8 +6,44 @@ const bcrypt = require('bcryptjs');
 const xlsx = require('xlsx');
 const db = require('./db');
 const mail = require('./mail');
+const webpush = require('web-push');
 
 require('dotenv').config();
+
+// VAPID keys initialization for PWA push notifications
+let vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+let vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+if (!vapidPublicKey || !vapidPrivateKey) {
+  const vapidKeysPath = path.join(__dirname, '.vapid-keys.json');
+  if (fs.existsSync(vapidKeysPath)) {
+    try {
+      const keys = JSON.parse(fs.readFileSync(vapidKeysPath, 'utf8'));
+      vapidPublicKey = keys.publicKey;
+      vapidPrivateKey = keys.privateKey;
+    } catch (e) {
+      console.error('Failed to parse cached VAPID keys:', e);
+    }
+  }
+
+  if (!vapidPublicKey || !vapidPrivateKey) {
+    console.log('Generating new VAPID keys for PWA Push notifications...');
+    const keys = webpush.generateVAPIDKeys();
+    vapidPublicKey = keys.publicKey;
+    vapidPrivateKey = keys.privateKey;
+    try {
+      fs.writeFileSync(vapidKeysPath, JSON.stringify(keys, null, 2), 'utf8');
+    } catch (e) {
+      console.error('Failed to cache VAPID keys:', e);
+    }
+  }
+}
+
+webpush.setVapidDetails(
+  'mailto:support@doctorapp.com',
+  vapidPublicKey,
+  vapidPrivateKey
+);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -209,6 +245,85 @@ app.post('/api/owner/settings/qr', authenticateRole('owner'), upload.single('qr_
   }
 });
 
+// --- PWA WEB PUSH NOTIFICATIONS ---
+app.get('/api/public/vapid-public-key', (req, res) => {
+  res.json({ publicKey: vapidPublicKey });
+});
+
+app.post('/api/public/push-subscription', async (req, res) => {
+  const { subscription, role, associatedId } = req.body;
+  if (!subscription || !subscription.endpoint || !role || !associatedId) {
+    return res.status(400).json({ error: 'Subscription, role, and associatedId are required.' });
+  }
+
+  const { endpoint, keys } = subscription;
+  const p256dh = keys ? keys.p256dh : '';
+  const auth = keys ? keys.auth : '';
+
+  try {
+    const existing = await db.query(`SELECT id FROM push_subscriptions WHERE endpoint = $1`, [endpoint]);
+    if (existing.rows.length > 0) {
+      await db.query(
+        `UPDATE push_subscriptions SET role = $1, associated_id = $2, keys_p256dh = $3, keys_auth = $4 WHERE endpoint = $5`,
+        [role, associatedId, p256dh, auth, endpoint]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO push_subscriptions (role, associated_id, endpoint, keys_p256dh, keys_auth) VALUES ($1, $2, $3, $4, $5)`,
+        [role, associatedId, endpoint, p256dh, auth]
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to save push subscription:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper to push native device alerts
+async function sendPushNotification(role, associatedId, title, body) {
+  try {
+    let result;
+    if (associatedId) {
+      result = await db.query(
+        `SELECT endpoint, keys_p256dh, keys_auth FROM push_subscriptions WHERE role = $1 AND associated_id = $2`,
+        [role, associatedId.toString()]
+      );
+    } else {
+      result = await db.query(
+        `SELECT endpoint, keys_p256dh, keys_auth FROM push_subscriptions WHERE role = $1`,
+        [role]
+      );
+    }
+
+    const payload = JSON.stringify({ title, body });
+
+    for (const sub of result.rows) {
+      const pushSubscription = {
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: sub.keys_p256dh,
+          auth: sub.keys_auth
+        }
+      };
+
+      try {
+        await webpush.sendNotification(pushSubscription, payload);
+        console.log(`[Push Notification] Sent successfully to ${role}: ${associatedId || 'All'}`);
+      } catch (err) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`[Push Notification] Subscription expired/gone. Removing endpoint: ${sub.endpoint}`);
+          await db.query(`DELETE FROM push_subscriptions WHERE endpoint = $1`, [sub.endpoint]);
+        } else {
+          console.error(`[Push Notification Error] Failed to send:`, err.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Push Notification Error] failed to dispatch:', err.message);
+  }
+}
+
 // --- PATIENT BOOKING APIS ---
 app.get('/api/public/doctors', async (req, res) => {
   try {
@@ -251,7 +366,6 @@ app.post('/api/public/appointments/book', upload.single('payment_proof'), async 
       appointmentId: apptId
     });
 
-    // Notify Doctor via WhatsApp
     if (doctor.phone) {
       await mail.sendWhatsApp({
         to: doctor.phone,
@@ -259,6 +373,10 @@ app.post('/api/public/appointments/book', upload.single('payment_proof'), async 
         appointmentId: apptId
       });
     }
+
+    // Send Native push notifications
+    await sendPushNotification('admin', 'admin@doctorapp.com', 'New Consultation Request', `Patient ${patient_name} submitted request (ID: ${apptId}) for Dr. ${doctor.name}.`);
+    await sendPushNotification('doctor', doctor.email, 'New Booking Request', `Patient ${patient_name} requested a consultation (ID: ${apptId}).`);
 
     res.status(201).json({ success: true, appointmentId: apptId });
   } catch (err) {
@@ -393,6 +511,9 @@ app.post('/api/doctor/appointments/:id/accept', authenticateRole('doctor'), asyn
       appointmentId: appt.id
     });
 
+    // Push native device notification to patient
+    await sendPushNotification('patient', appt.id, 'Appointment Confirmed', `Your appointment with Dr. ${req.user.name} is confirmed for ${scheduled_date} at ${scheduled_time}.`);
+
     res.json({ message: 'Appointment approved and meeting details configured.', appointment: appt });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -434,6 +555,9 @@ app.post('/api/doctor/appointments/:id/reject', authenticateRole('doctor'), asyn
       message: `Your appointment ${appt.id} was rejected: ${reason}. Refund is pending.`,
       appointmentId: appt.id
     });
+
+    // Push native alert to patient
+    await sendPushNotification('patient', appt.id, 'Appointment Rejected', `Your appointment request with Dr. ${req.user.name} was rejected: ${reason}.`);
 
     res.json({ message: 'Appointment rejected. Refund is now flagged as pending.', appointment: appt });
   } catch (err) {
@@ -490,6 +614,9 @@ app.post('/api/doctor/appointments/:id/refund', authenticateRole('doctor'), asyn
       message: `Refund of $${refund_amount} processed for appointment ${appt.id}. Ref: ${refund_ref}`,
       appointmentId: appt.id
     });
+
+    // Push native alert to patient
+    await sendPushNotification('patient', appt.id, 'Refund Processed', `A refund of $${refund_amount} has been processed for your consultation (ID: ${appt.id}). Ref: ${refund_ref}.`);
 
     res.json({ message: 'Refund logged successfully.', appointment: appt });
   } catch (err) {
@@ -553,6 +680,10 @@ app.post('/api/doctor/appointments/:id/followup', authenticateRole('doctor'), as
       message: `Follow-up consultation is scheduled with Dr. ${req.user.name} on ${scheduled_date} at ${scheduled_time}. Meet: ${newMeetLink}`,
       appointmentId: newApptId
     });
+
+    // Push native alert to patient (using both original and new IDs to ensure delivery)
+    await sendPushNotification('patient', orig.id, 'Follow-up Scheduled', `Follow-up scheduled with Dr. ${req.user.name} for ${scheduled_date} at ${scheduled_time}.`);
+    await sendPushNotification('patient', newApptId, 'Follow-up Scheduled', `Follow-up scheduled with Dr. ${req.user.name} for ${scheduled_date} at ${scheduled_time}.`);
 
     res.status(201).json({ message: 'Follow-up appointment scheduled successfully.', appointmentId: newApptId });
   } catch (err) {
@@ -677,6 +808,8 @@ async function sendDailyAvailabilityReminders() {
           message: `Good Morning Dr. ${doc.name}, this is your daily 6:00 AM reminder to update your availability and working hours for today on the doctor portal.`
         });
       }
+      // Send Native push reminder to the doctor
+      await sendPushNotification('doctor', doc.email, 'Action Required: Daily Schedule', `Good morning Dr. ${doc.name}, please update your consultation availability and hours for today.`);
     }
     console.log(`[Scheduler] Availability reminders dispatched successfully to ${activeDoctors.length} doctors.`);
     return activeDoctors.length;

@@ -15,6 +15,7 @@
     "nodemailer": "^6.9.13",
     "pg": "^8.11.5",
     "sqlite3": "^5.1.7",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
   "author": "Antigravity",

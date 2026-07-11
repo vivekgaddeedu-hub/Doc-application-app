@@ -332,6 +332,9 @@ async function initPatientPortal() {
         document.getElementById('success-appt-id').textContent = result.appointmentId;
         bookingForm.reset();
         if (feeDisplay) feeDisplay.style.display = 'none';
+        
+        // Subscribe this device to updates for this appointment ID
+        subscribeToPushNotifications('patient', result.appointmentId);
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
@@ -457,6 +460,7 @@ async function initDoctorPortal() {
     portalSection.style.display = 'block';
     document.getElementById('doctor-name-display').textContent = user.name;
     loadDoctorDashboard();
+    subscribeToPushNotifications('doctor', user.email);
   } else {
     loginSection.style.display = 'block';
     portalSection.style.display = 'none';
@@ -484,6 +488,7 @@ async function initDoctorPortal() {
         
         showToast('Login Successful!');
         loadDoctorDashboard();
+        subscribeToPushNotifications('doctor', res.user.email);
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
@@ -775,6 +780,7 @@ async function initOwnerPortal() {
     loginSection.style.display = 'none';
     portalSection.style.display = 'block';
     loadOwnerDashboard();
+    subscribeToPushNotifications('admin', 'admin@doctorapp.com');
   } else {
     loginSection.style.display = 'block';
     portalSection.style.display = 'none';
@@ -800,6 +806,7 @@ async function initOwnerPortal() {
         portalSection.style.display = 'block';
         showToast('Owner Portal Logged In!');
         loadOwnerDashboard();
+        subscribeToPushNotifications('admin', 'admin@doctorapp.com');
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
@@ -1049,6 +1056,64 @@ function triggerReportDownload() {
     a.remove();
   })
   .catch(err => showToast(err.message, 'error'));
+}
+
+// Base64 VAPID Key conversion utility
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Global push notifications registration trigger
+async function subscribeToPushNotifications(role, associatedId) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.log('Push notifications not supported on this browser.');
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      console.log('Notification permission denied.');
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+
+    // Fetch public key
+    const vapidRes = await fetch('/api/public/vapid-public-key');
+    const { publicKey } = await vapidRes.json();
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+
+    // Register/save subscription on backend
+    await fetch('/api/public/push-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subscription,
+        role,
+        associatedId
+      })
+    });
+
+    console.log(`[Push Subscribed] Registered for role: ${role}, associatedId: ${associatedId}`);
+  } catch (err) {
+    console.error('[Push Subscription Error] failed to subscribe:', err);
+  }
 }
 
 // --- PWA SERVICE WORKER REGISTRATION ---
